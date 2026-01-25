@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Voice Transcription – Mic Stream</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      padding: 40px;
+      max-width: 700px;
+      width: 100%;
+      animation: fadeIn 0.5s ease-in;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    h1 {
+      color: #667eea;
+      text-align: center;
+      margin-bottom: 10px;
+      font-size: 2.5em;
+      font-weight: 700;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #666;
+      margin-bottom: 40px;
+      font-size: 1.1em;
+    }
+
+    .button-container {
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+      margin-bottom: 40px;
+    }
+
+    button {
+      padding: 18px 40px;
+      font-size: 1.1em;
+      font-weight: 600;
+      border: none;
+      border-radius: 50px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+      position: relative;
+      overflow: hidden;
+    }
+
+    button::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 0;
+      height: 0;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.3);
+      transform: translate(-50%, -50%);
+      transition: width 0.6s, height 0.6s;
+    }
+
+    button:hover::before {
+      width: 300px;
+      height: 300px;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    #startBtn {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+
+    #startBtn:hover {
+      background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+    }
+
+    #stopBtn {
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      color: white;
+    }
+
+    #stopBtn:hover {
+      background: linear-gradient(135deg, #f5576c 0%, #f093fb 100%);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+
+    .status-indicator {
+      text-align: center;
+      margin-bottom: 30px;
+      font-size: 1.1em;
+      font-weight: 600;
+    }
+
+    .status-indicator .dot {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      margin-right: 8px;
+      animation: pulse 2s infinite;
+    }
+
+    .status-indicator.recording .dot {
+      background: #f5576c;
+    }
+
+    .status-indicator.idle .dot {
+      background: #95a5a6;
+      animation: none;
+    }
+
+    @keyframes pulse {
+      0%, 100% {
+        opacity: 1;
+      }
+      50% {
+        opacity: 0.5;
+      }
+    }
+
+    .transcription-container {
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      border-radius: 15px;
+      padding: 30px;
+      min-height: 200px;
+      box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .transcription-label {
+      color: #667eea;
+      font-size: 1.2em;
+      font-weight: 700;
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .transcription-label::before {
+      content: '🎤';
+      font-size: 1.3em;
+    }
+
+    #assistantText {
+      color: #2c3e50;
+      font-size: 1.3em;
+      line-height: 1.8;
+      min-height: 50px;
+      padding: 15px;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      transition: all 0.3s ease;
+    }
+
+    #assistantText:not(:empty) {
+      animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateX(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    .placeholder {
+      color: #95a5a6;
+      font-style: italic;
+    }
+
+    .call-section {
+      background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%);
+      border-radius: 15px;
+      padding: 30px;
+      margin-bottom: 30px;
+      box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .call-label {
+      color: #d63031;
+      font-size: 1.2em;
+      font-weight: 700;
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .call-label::before {
+      content: '📞';
+      font-size: 1.3em;
+    }
+
+    .call-input-container {
+      display: flex;
+      gap: 15px;
+      align-items: center;
+    }
+
+    .phone-input {
+      flex: 1;
+      padding: 15px 20px;
+      font-size: 1.2em;
+      border: 2px solid #ddd;
+      border-radius: 50px;
+      outline: none;
+      transition: all 0.3s ease;
+      background: white;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    }
+
+    .phone-input:focus {
+      border-color: #667eea;
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+      transform: translateY(-2px);
+    }
+
+    .phone-input::placeholder {
+      color: #95a5a6;
+    }
+
+    #callBtn {
+      background: linear-gradient(135deg, #00b894 0%, #00cec9 100%);
+      color: white;
+      padding: 15px 35px;
+      white-space: nowrap;
+    }
+
+    #callBtn:hover {
+      background: linear-gradient(135deg, #00cec9 0%, #00b894 100%);
+    }
+
+    #callBtn.calling {
+      background: linear-gradient(135deg, #e17055 0%, #d63031 100%);
+      animation: pulse-button 1.5s infinite;
+    }
+
+    @keyframes pulse-button {
+      0%, 100% {
+        transform: scale(1);
+      }
+      50% {
+        transform: scale(1.05);
+      }
+    }
+
+    .call-status {
+      margin-top: 15px;
+      padding: 12px;
+      border-radius: 10px;
+      font-size: 1em;
+      text-align: center;
+      display: none;
+    }
+
+    .call-status.success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+      display: block;
+    }
+
+    .call-status.error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+      display: block;
+    }
+
+    .call-status.info {
+      background: #d1ecf1;
+      color: #0c5460;
+      border: 1px solid #bee5eb;
+      display: block;
+    }
+
+    @media (max-width: 600px) {
+      .container {
+        padding: 25px;
+      }
+
+      h1 {
+        font-size: 2em;
+      }
+
+      .button-container {
+        flex-direction: column;
+      }
+
+      button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎙️ Voice Transcription</h1>
+    <p class="subtitle">Click to start recording and see your speech transcribed in real-time</p>
+    
+    <div class="status-indicator idle" id="statusIndicator">
+      <span class="dot"></span>
+      <span id="statusText">Ready to record</span>
+    </div>
+
+    <div class="button-container">
+      <button id="startBtn" onclick="startMic()">🎤 Open Mic</button>
+      <button id="stopBtn" onclick="stopMic()">⏹️ Stop Mic</button>
+    </div>
+
+    <div class="call-section">
+      <div class="call-label">Make Outbound Call</div>
+      <div class="call-input-container">
+        <input 
+          type="tel" 
+          id="phoneInput" 
+          class="phone-input" 
+          placeholder="Enter phone number (e.g., 91918343434343)"
+          pattern="[+]?[0-9]+"
+        />
+        <button id="callBtn" onclick="makeCall()">📞 Call</button>
+      </div>
+      <div id="callStatus" class="call-status"></div>
+    </div>
+
+    <div class="transcription-container">
+      <div class="transcription-label">Transcription</div>
+      <p id="assistantText" class="placeholder">— Waiting for transcription —</p>
+    </div>
+  </div>
+
+  <script>
+    const ws = new WebSocket("ws://localhost:8000/ws");
+    ws.binaryType = "arraybuffer";
+
+    let audioContext;
+    let processor;
+    let micStream;
+    let isRecording = false;
+
+    let audioQueue = [];
+    let isPlaying = false;
+
+    const startBtn = document.getElementById("startBtn");
+    const stopBtn = document.getElementById("stopBtn");
+    const statusIndicator = document.getElementById("statusIndicator");
+    const statusText = document.getElementById("statusText");
+    const assistantText = document.getElementById("assistantText");
+
+    function updateStatus(recording) {
+      isRecording = recording;
+      if (recording) {
+        statusIndicator.classList.remove("idle");
+        statusIndicator.classList.add("recording");
+        statusText.textContent = "Recording...";
+        startBtn.disabled = true;
+        stopBtn.disabled = false;
+      } else {
+        statusIndicator.classList.remove("recording");
+        statusIndicator.classList.add("idle");
+        statusText.textContent = "Ready to record";
+        startBtn.disabled = false;
+        stopBtn.disabled = true;
+      }
+    }
+
+    updateStatus(false);
+
+    ws.onopen = () => {
+      console.log("WebSocket connected");
+    };
+
+    ws.onerror = () => {
+      assistantText.textContent = "⚠️ Connection error. Please check if the server is running.";
+      assistantText.style.color = "#e74c3c";
+    };
+
+    ws.onclose = () => {
+      assistantText.textContent = "⚠️ Connection closed. Please refresh the page.";
+      assistantText.style.color = "#e74c3c";
+    };
+
+    ws.onmessage = (event) => {
+      if (typeof event.data === "string") {
+        if (event.data.trim()) {
+          assistantText.textContent = event.data;
+          assistantText.classList.remove("placeholder");
+          assistantText.style.color = "#2c3e50";
+        }
+      } else {
+        audioQueue.push(event.data);
+        if (!isPlaying) {
+          stopMic();
+          playNextChunk();
+        }
+      }
+    };
+
+    function playNextChunk() {
+      if (audioQueue.length === 0) {
+        isPlaying = false;
+        startMic();
+        return;
+      }
+
+      isPlaying = true;
+      const chunk = audioQueue.shift();
+      const audioBlob = new Blob([chunk], { type: "audio/wav" });
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audio = new Audio(audioUrl);
+
+      audio.onended = () => {
+        URL.revokeObjectURL(audioUrl);
+        playNextChunk();
+      };
+
+      audio.play().catch(err => {
+        console.error("Error playing audio:", err);
+        playNextChunk();
+      });
+    }
+
+    async function startMic() {
+      try {
+        audioContext = new AudioContext({ sampleRate: 16000 });
+
+        micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const source = audioContext.createMediaStreamSource(micStream);
+
+        processor = audioContext.createScriptProcessor(4096, 1, 1);
+
+        processor.onaudioprocess = (event) => {
+          const input = event.inputBuffer.getChannelData(0);
+
+          // Convert float32 → int16 PCM
+          const pcm16 = new Int16Array(input.length);
+          for (let i = 0; i < input.length; i++) {
+            pcm16[i] = Math.max(-1, Math.min(1, input[i])) * 0x7fff;
+          }
+
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(pcm16.buffer);
+          }
+        };
+
+        source.connect(processor);
+        processor.connect(audioContext.destination);
+
+        updateStatus(true);
+        console.log("Mic started");
+      } catch (error) {
+        console.error("Error starting mic:", error);
+        assistantText.textContent = "⚠️ Error accessing microphone. Please allow microphone permissions.";
+        assistantText.style.color = "#e74c3c";
+        updateStatus(false);
+      }
+    }
+
+    function stopMic() {
+      if (processor) processor.disconnect();
+      if (micStream) {
+        micStream.getTracks().forEach(t => t.stop());
+      }
+      if (audioContext) audioContext.close();
+      
+      updateStatus(false);
+      console.log("Mic stopped");
+    }
+
+    async function makeCall() {
+      const phoneInput = document.getElementById("phoneInput");
+      const callBtn = document.getElementById("callBtn");
+      const callStatus = document.getElementById("callStatus");
+      // Remove all spaces and whitespace from phone number, but keep + if present
+      let phoneNumber = phoneInput.value.replace(/\s+/g, '').trim();
+
+      if (!phoneNumber) {
+        callStatus.textContent = "⚠️ Please enter a phone number";
+        callStatus.className = "call-status error";
+        return;
+      }
+
+      // Always add a leading space before the phone number (will be encoded as %20)
+      // Format: " 917234234303" or " +917234234303" -> becomes %20917234234303 or %20+917234234303
+      phoneNumber = ' ' + phoneNumber;
+      
+      // Encode phone number with leading space
+      const encodedPhone = encodeURIComponent(phoneNumber);
+      const apiUrl = `http://localhost:8000/api/call?phone=${encodedPhone}`;
+
+      // Update UI
+      callBtn.disabled = true;
+      callBtn.classList.add("calling");
+      callBtn.textContent = "📞 Calling...";
+      callStatus.textContent = `🔄 Initiating call to ${phoneNumber}...`;
+      callStatus.className = "call-status info";
+
+      try {
+        // Use POST method (as shown in logs, POST returns 200 OK)
+        // Note: Browser will send OPTIONS preflight first - server must handle it
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          mode: 'cors',
+          credentials: 'omit',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json().catch(() => ({}));
+          callStatus.textContent = `✅ Call initiated successfully to ${phoneNumber}`;
+          callStatus.className = "call-status success";
+          console.log("Call initiated:", data);
+        } else {
+          const errorText = await response.text().catch(() => 'Unknown error');
+          callStatus.textContent = `❌ Error (${response.status}): ${errorText || 'Failed to initiate call'}`;
+          callStatus.className = "call-status error";
+          console.error("Call failed:", response.status, errorText);
+        }
+      } catch (error) {
+        // Check if it's a CORS error
+        if (error.message.includes('CORS') || error.message.includes('Failed to fetch') || error.name === 'TypeError') {
+          callStatus.textContent = `❌ CORS Error: Server needs to handle OPTIONS preflight requests. The server should allow OPTIONS method for CORS.`;
+          callStatus.className = "call-status error";
+          console.error("CORS error - Server must handle OPTIONS preflight requests. Current error:", error);
+        } else {
+          callStatus.textContent = `❌ Connection error: ${error.message}`;
+          callStatus.className = "call-status error";
+          console.error("Call error:", error);
+        }
+      } finally {
+        callBtn.disabled = false;
+        callBtn.classList.remove("calling");
+        callBtn.textContent = "📞 Call";
+        
+        // Clear status after 5 seconds
+        setTimeout(() => {
+          callStatus.className = "call-status";
+          callStatus.textContent = "";
+        }, 5000);
+      }
+    }
+
+    // Remove spaces automatically as user types
+    const phoneInput = document.getElementById("phoneInput");
+    phoneInput.addEventListener("input", function(event) {
+      const value = event.target.value;
+      const cleaned = value.replace(/\s+/g, '');
+      if (value !== cleaned) {
+        event.target.value = cleaned;
+      }
+    });
+
+    // Allow Enter key to trigger call
+    phoneInput.addEventListener("keypress", function(event) {
+      if (event.key === "Enter") {
+        makeCall();
+      }
+    });
+  </script>
+</body>
+</html>
